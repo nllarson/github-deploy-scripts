@@ -1,7 +1,3 @@
-README.txt
-
-Post Push Service Hook to deploy code.
-
 Overview:
 
 Perform 'git pull' on remote version of a repository through a php script.
