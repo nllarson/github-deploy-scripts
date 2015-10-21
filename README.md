@@ -1,23 +1,95 @@
-Overview:
+# github-deploy-scripts
 
-Perform `git pull` on remote version of a repository through a php script.
+Use a GitHub webhook event to deploy / update your code on your webserver.
 
-Installation:
+## Installation
+Copy `github.php` and `github.config.php` to the base of your checked out code on your server.  These scripts need to be accessible by an HTTP POST.
 
-Copy github.php and github.config.php to the base of your checked out code on your server.  You then will need to setup a service hook on your github repo.  (Admin -> Service Hooks -> Post-Receive URLs)  Point the hook to the location of github.php (http://www.yourdomain.com/github.php)
+## Setup
+Create a webhook on your GitHub repo.  (**Settings** -> **Webhooks & Services**).
 
-Make sure your service hook's **Content Type** setting is `application/x-www-form-urlencoded`.  The default of `application/json` is not supported with this script.
+![Webhook Example](nllarson.github.io/webhood-setup.png)
 
-Configuration:
+Make sure your webhook's **Content Type** setting is `application/x-www-form-urlencoded`.  The default of `application/json` is not supported with this script.
 
-github.config.php:
+## Configuration
 
-enabled -> Kill switch (on == deploy)
-to_email ->  Email Address to send deployment notifications to.
-from_email -> Email Address used as from (deploy@yourdomain.com)
-site_name -> Name for your site
-git_update -> flag to actually do the git_update (turn off for testing purposes)
-limit_users -> flag to only allow whitelisted users to deploy
-limit_branch -> flag to only allow specific branches to deploy
-valid_users -> array of valid github usernames that are allowed to deploy from push.
-valid_branches -> array of valid branch references that are allowed to be deployed
+`github.config.php` contains all your configuration for the scripts to work.
+
+### `limit_branch`
+  * type: `boolean`
+  * default: `false`
+
+Webhooks events are sent for every push to your repository.  (To any branch / tag)  There are times where you will only want this script to run only for pushes to specific branches.
+
+**Note:** if set to *true*, you will need to also set the `valid_branches`, so that the script knows what events to execute on.
+
+### `valid_branches`
+  * type: `array`
+  * default: `[]`
+
+```php
+$valid_branches = array("ref/heads/master");
+// or
+$valid_branches = array("ref/heads/master","ref/heads/prod");
+```
+
+This array should contain the branch names (as specified by the Webhook Payload `$_POST[payload][ref]`) that are valid for the script to execute.  This array is only checked when the `limit_branch` flag is set to *true*.
+
+### `enabled`
+  * type: `boolean`
+  * default: `true`
+
+Kill switch for the main logic of the script.  If set to false, nothing will ever get deployed, but you will get an email notification that the script was called, just disabled.
+
+**Note:** The `limit_branch` check is run first, there could be scenarios where you have the script disabled and you will not receive the notification.  
+
+### `git_update`
+  * type: `boolean`
+  * default: `true`
+
+Flag to do the actual `git pull` command.  Shut off for trial runs / testing.
+
+### `to_email`
+  * type: `string`
+  * **REQUIRED**
+
+```php
+$to_email = "someuser@somedomain.com";
+```
+
+The email to send all notifications to.
+
+### `from_email`
+  * type: `string`
+  * **REQUIRED**
+
+```php
+$from_email = "admin@yourdomain.com";
+```
+
+The email that is sending the notification.  For some hosting providers (Dreamhost), this email *MUST* be from the domain that is hosting the site.
+
+### `site_name`
+  * type: `string`
+  * **REQUIRED**
+
+```php
+$site_name = "GitHub Deploy Scripts";
+```
+
+The name of your site.  Used in the notifications.
+
+### `limit_users`
+  * type: `boolean`
+  * default : `false`
+
+Flag to set if you are wanting to whitelist which users can actually deploy the code.
+
+**Note:** If `true`, you must specify the users in the `valid_users` option.
+
+### `valid_users`
+  * type: `array`
+  * deafault `[]`
+
+Array of valid github usernames that are allowed to deploy from push.
