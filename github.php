@@ -11,67 +11,69 @@ function myException($exception)
 
 set_exception_handler('myException');
 
-//$reason = "START";
-
-if ($enabled)
-{
-	$data = json_decode($_POST[payload], true);
-	$pusher = $data[pusher][name];
-	$pusher_email = $data[pusher][email];
-
-	//$reason = " -- ENABLED";
-	$safe_to_deploy = true;
-
-	if ($limit_users)
-	{
-		$safe_to_deploy = false;
-		//$reason .= " -- Limit Users";
-		if(in_array($pusher, $valid_users))
-		{
-			$safe_to_deploy = true;
-			//$reason .= " -- VALID";
-		}
-	}
-	else
-	{
-		$safe_to_deploy = false;
-		//$reason .= " -- No Limit Users";
-		if (isset($pusher) && isset($pusher_email))
-		{
-			//$reason .= " -- PUSHER OK";
-			$safe_to_deploy = true;
-		}
-	}
-
-	if ($safe_to_deploy)
-	{
-		//$reason .= " -- SAFE TO DEPLOY";
-		$repo = $data[repository][name];
-		$repo_url = $data[repository][url];
-		//`git pull`;
-		
-		$body="Site: ".$site_name."\n Pusher: ".$pusher."\n Pusher Email: ".$pusher_email."\n Repo: ".$repo."\n Repo URL: ".$repo_url."\n";
-		$subject="Deployment - ".$site_name;
-		$headers = "From: ".$from_email."\n";
-	}
-	else
-	{
-		//$reason .= " -- FAIL TO DEPLOY";
-		$body="Site: ".$site_name."\n IP: ".$_SERVER['REMOTE_ADDR']."\n\n\n".serialize($_REQUEST);
-		$subject="Deployment Failure - ".$site_name;
-		$headers = "From: ".$from_email."\n";
-	}
-}
-else 
-{
-	//$reason = " -- DISABLED";
-	$body="Site: ".$site_name."\n IP: ".$_SERVER['REMOTE_ADDR']."\n\n\n".serialize($_REQUEST);
-	$subject="Deployment Disabled - ".$site_name;
-	$headers = "From: ".$from_email."\n";
-
+function validBranch($branchLimit, $ref, $branches) {
+        if ($branchLimit) {
+                return in_array($ref, $branches);
+        } else {
+                return true;
+        }
 }
 
-	//mail($to_email,$subject,$body."\n --- \n".$reason,$headers);
-	mail($to_email,$subject,$body,$headers);
+function validUser($userLimit, $user, $user_email)
+{
+        if ($userLimit)
+        {
+                return in_array($user, $valid_users);
+        } else {
+                return isset($user) && isset($user_email);
+        }
+}
+
+$data = json_decode($_POST['payload'], true);
+$pusher = $data['pusher']['name'];
+$pusher_email = $data['pusher']['email'];
+$branch_changed = $data['ref'];
+
+if (validBranch($limit_branch, $branch_changed, $valid_branches)) {
+        echo "Valid Branch - ".$branch_changed;
+
+        if ($enabled) {
+                if (validUser($limit_users, $pusher, $pusher_email)) {
+                        echo "Valid User - ".$pusher;
+
+                        $repo = $data['repository']['name'];
+                        $repo_url = $data['repository']['url'];
+
+                        if ($git_update)
+                        {
+                                `git pull`;
+                                echo "git pull";
+                        }
+
+                        $body="Site: ".$site_name."\n Pusher: ".$pusher."\n Pusher Email: ".$pusher_email."\n Repo: ".$repo."\n Repo URL: ".$repo_url."\n Branch: ".$branch_changed."\n";
+                        $subject="Deployment - ".$site_name;
+                        $headers = "From: ".$from_email."\n";
+                }
+                else
+                {
+                        echo "Not a valid User - Aborting Deployment";
+                        $body="Site: ".$site_name."\n IP: ".$_SERVER['REMOTE_ADDR']."\n\n\n".serialize($_REQUEST)."\n\n\n";
+                        $subject="Deployment Failure - ".$site_name;
+                        $headers = "From: ".$from_email."\n";
+                }
+        }
+        else
+        {
+                echo "Script Disabled";
+                $body="Site: ".$site_name."\n IP: ".$_SERVER['REMOTE_ADDR']."\n\n\n".serialize($_REQUEST);
+                $subject="Deployment Disabled - ".$site_name;
+                $headers = "From: ".$from_email."\n";
+        }
+
+        mail($to_email,$subject,$body,$headers);
+        echo "DONE";
+} else {
+        echo "No Work To Perform - Not Tracking this Branch";
+}
 
 ?>
