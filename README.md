@@ -8,7 +8,7 @@ Copy `github.php` and `github.config.php` to the base of your checked out code o
 ## Setup
 Create a webhook on your GitHub repo.  (**Settings** -> **Webhooks & Services**).
 
-![Webhook Example](nllarson.github.io/webhood-setup.png)
+![My image](http://nllarson.github.io/webhook-setup.png)
 
 Make sure your webhook's **Content Type** setting is `application/x-www-form-urlencoded`.  The default of `application/json` is not supported with this script.
 
